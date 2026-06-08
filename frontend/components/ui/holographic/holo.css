@@ -1,0 +1,99 @@
+/* Standalone 3D Holographic Card CSS */
+@keyframes holo-rotate {
+  0%   { filter: hue-rotate(0deg) brightness(0.85) saturate(1.5); }
+  50%  { filter: hue-rotate(180deg) brightness(1.0) saturate(1.7); }
+  100% { filter: hue-rotate(360deg) brightness(0.85) saturate(1.5); }
+}
+
+@keyframes bg-shift {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes shimmer {
+  0%   { opacity: 0.2; transform: translateX(-100%) rotate(25deg); }
+  100% { opacity: 0.45; transform: translateX(300%) rotate(25deg); }
+}
+
+@keyframes pulse-shadow {
+  0%, 100% { box-shadow: 0 0 28px 5px rgba(80,30,160,0.6), 0 0 55px 10px rgba(160,30,100,0.3); }
+  33%       { box-shadow: 0 0 28px 5px rgba(30,110,160,0.6), 0 0 55px 10px rgba(30,160,110,0.3); }
+  66%       { box-shadow: 0 0 28px 5px rgba(140,110,30,0.6), 0 0 55px 10px rgba(160,40,40,0.3); }
+}
+
+@keyframes float-y {
+  0%, 100% { transform: translateY(0px) rotateY(0deg); }
+  25% { transform: translateY(-10px) rotateY(8deg); }
+  75% { transform: translateY(10px) rotateY(-8deg); }
+}
+
+.card-container {
+  perspective: 1000px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 50px;
+}
+
+.card-3d {
+  width: 280px;
+  height: 280px;
+  transform-style: preserve-3d;
+  animation: float-y 8s ease-in-out infinite;
+  position: relative;
+}
+
+.holo-card {
+  width: 280px;
+  height: 280px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #8b0050, #a04500, #006060, #2a007a, #005040, #8b0050);
+  background-size: 400% 400%;
+  animation: bg-shift 4s ease-in-out infinite, holo-rotate 4s linear infinite, pulse-shadow 4s ease-in-out infinite;
+  position: absolute;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transform: translateZ(20px);
+}
+
+.holo-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 55px; height: 200%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent);
+  animation: shimmer 2.5s ease-in-out infinite;
+}
+
+.holo-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent, transparent 2px,
+    rgba(255,255,255,0.03) 2px,
+    rgba(255,255,255,0.03) 4px
+  );
+}
+
+.side-right {
+  position: absolute;
+  width: 40px;
+  height: 280px;
+  background: #3a0020;
+  transform: rotateY(90deg) translateZ(260px);
+  border-radius: 20px;
+}
+
+.side-top {
+  position: absolute;
+  width: 280px;
+  height: 40px;
+  background: #200020;
+  transform: rotateX(-90deg) translateZ(260px);
+  border-radius: 20px;
+}

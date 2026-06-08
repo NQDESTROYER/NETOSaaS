@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>NETO Premium Hardware 3D</title>
+    <style>
+        body { margin: 0; background: #080808; overflow: hidden; display: flex; justify-content: center; align-items: center; height: 100vh; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script id="vertexShader" type="x-shader/x-vertex">
+        varying vec2 vUv;
+        void main() {
+            vUv = uv;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+    </script>
+    <script id="fragmentShader" type="x-shader/x-fragment">
+        varying vec2 vUv;
+        uniform float uTime;
+        void main() {
+            float r = sin(vUv.x * 6.28 + uTime * 0.5) * 0.5 + 0.5;
+            float g = sin(vUv.x * 6.28 + uTime * 0.3 + 2.0) * 0.5 + 0.5;
+            float b = sin(vUv.x * 6.28 + uTime * 0.7 + 4.0) * 0.5 + 0.5;
+            gl_FragColor = vec4(vec3(r, g, b) * 1.5, 1.0);
+        }
+    </script>
+    <script>
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setClearColor(0x080808, 1); 
+        document.body.appendChild(renderer.domElement);
+        camera.position.set(0, 2, 4);
+        camera.lookAt(0, 0, 0);
+
+        // Handle resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // High Resolution Texture
+        const canvas = document.createElement('canvas');
+        canvas.width = 1024; canvas.height = 1024;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#080808'; 
+        ctx.fillRect(0, 0, 1024, 1024);
+        ctx.fillStyle = 'white'; 
+        ctx.font = 'bold 200px sans-serif';
+        ctx.textAlign = 'center'; 
+        ctx.textBaseline = 'middle';
+        ctx.fillText('NETO', 512, 512);
+        
+        const lidTexture = new THREE.CanvasTexture(canvas);
+
+        const radius = 1.4;
+        const bodyGeo = new THREE.CylinderGeometry(radius, radius, 0.8, 64);
+        const lidGeo = new THREE.CylinderGeometry(radius, radius, 0.2, 64);
+        
+        const bodyMat = new THREE.ShaderMaterial({
+            uniforms: { uTime: { value: 0 } },
+            vertexShader: document.getElementById('vertexShader').textContent,
+            fragmentShader: document.getElementById('fragmentShader').textContent
+        });
+        const lidMat = new THREE.MeshStandardMaterial({ map: lidTexture, roughness: 0.3, metalness: 0.1 });
+
+        const body = new THREE.Mesh(bodyGeo, bodyMat);
+        const lid = new THREE.Mesh(lidGeo, lidMat);
+        lid.position.y = 0.5;
+        
+        const group = new THREE.Group();
+        group.add(body);
+        group.add(lid);
+        scene.add(group);
+
+        scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+        
+        function animate(t) {
+            requestAnimationFrame(animate);
+            bodyMat.uniforms.uTime.value = t * 0.001;
+            group.rotation.y = Math.sin(t * 0.0005) * 0.2;
+            group.position.y = Math.sin(t * 0.002) * 0.05;
+            renderer.render(scene, camera);
+        }
+        animate(0);
+    </script>
+</body>
+</html>

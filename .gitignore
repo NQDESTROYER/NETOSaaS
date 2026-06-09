@@ -14,3 +14,10 @@ build/
 .env.local
 frontend/.env.local
 backend/.env
+
+# System and editor files
+.DS_Store
+*.log
+.vscode/
+.idea/
+*.tmp

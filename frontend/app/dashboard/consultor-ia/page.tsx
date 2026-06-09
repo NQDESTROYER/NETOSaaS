@@ -45,7 +45,7 @@ export default function ConsultorPage() {
     
     const { data: { user } } = await supabase.auth.getUser()
     
-    const res = await fetch('https://backendneto-saa-25dn41xi3-tomasychristian-projects.vercel.app/api/ia/consultor', {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/ia/consultor`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ question: text, userId: user?.id })

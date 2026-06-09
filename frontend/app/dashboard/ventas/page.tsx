@@ -38,7 +38,7 @@ export default function VentasPage() {
 
   const handleConfirmSale = async () => {
     const { data: { user } } = await supabase.auth.getUser()
-    const response = await fetch('https://backendneto-saa-c952g2s0f-tomasychristian-projects.vercel.app/api/sales', {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/sales`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ cart, channel: selectedChannel, customerName, customerPhone, userId: user?.id })

@@ -13,13 +13,14 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 app.use(helmet()); 
 app.use(cors({ 
-  origin: [
-    'http://localhost:5078', 
-    'https://neto-saa-ah38ro72l-tomasychristian-projects.vercel.app',
-    'https://neto-saa-kl25mfpo5-tomasychristian-projects.vercel.app',
-    'https://neto-saa-s.vercel.app',
-    'https://neto-saa-93upfiv6i-tomasychristian-projects.vercel.app'
-  ], 
+  origin: function (origin, callback) {
+    // Permitir localhost o cualquier subdominio de vercel.app
+    if (!origin || origin === 'http://localhost:5078' || /\.vercel\.app$/.test(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   methods: ['GET', 'POST', 'PUT', 'DELETE'], 
   credentials: true 
 }));

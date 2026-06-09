@@ -12,7 +12,11 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SER
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 app.use(helmet()); 
-app.use(cors({ origin: 'http://localhost:5078', methods: ['GET', 'POST', 'PUT', 'DELETE'], credentials: true }));
+app.use(cors({ 
+  origin: ['http://localhost:5078', 'https://neto-saa-ah38ro72l-tomasychristian-projects.vercel.app'], 
+  methods: ['GET', 'POST', 'PUT', 'DELETE'], 
+  credentials: true 
+}));
 app.use(express.json());
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok', message: 'Neto Backend API operational' }));

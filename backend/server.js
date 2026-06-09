@@ -10,8 +10,8 @@ const app = express();
 // Configuración CORS más específica
 const corsOptions = {
   origin: [
-    'https://neto-saa-s.vercel.app', // URL principal del frontend
-    /https:\/\/neto-saa-.*-tomasychristian-projects\.vercel\.app/ // Patrón para despliegues de preview
+    'https://neto-saa-s.vercel.app', 
+    /https:\/\/neto-saa-.*-tomasychristian-projects\.vercel\.app/
   ],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Origin', 'X-Requested-With', 'Content-Type', 'Accept', 'Authorization'],
@@ -19,14 +19,23 @@ const corsOptions = {
   optionsSuccessStatus: 200
 };
 
-// Middleware
+// --- Mover CORS al tope absoluto ---
 app.use(cors(corsOptions));
-app.options('*', cors(corsOptions)); // Manejar explícitamente preflight OPTIONS
+app.options('*', cors(corsOptions)); 
 app.use(express.json());
 app.use(helmet());
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+// Middleware para forzar headers CORS en CADA respuesta
+app.use((req, res, next) => {
+    res.header("Access-Control-Allow-Origin", req.headers.origin || "*");
+    res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
+    res.header("Access-Control-Allow-Credentials", "true");
+    next();
+});
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok', message: 'Neto Backend API operational' }));
 app.get('/', (req, res) => res.json({ message: 'Bienvenido a la API de Neto' }));

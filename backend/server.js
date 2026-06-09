@@ -8,23 +8,18 @@ const OpenAI = require('openai');
 const app = express();
 const PORT = process.env.PORT || 3005;
 
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+// Middleware de CORS agresivo
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", "*"); 
+  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+  next();
+});
 
-app.use(helmet()); 
-app.use(cors({ 
-  origin: function (origin, callback) {
-    // Permitir localhost o cualquier subdominio de vercel.app
-    if (!origin || origin === 'http://localhost:5078' || /\.vercel\.app$/.test(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  methods: ['GET', 'POST', 'PUT', 'DELETE'], 
-  credentials: true 
-}));
-app.use(express.json());
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok', message: 'Neto Backend API operational' }));
 app.get('/', (req, res) => res.json({ message: 'Bienvenido a la API de Neto' }));

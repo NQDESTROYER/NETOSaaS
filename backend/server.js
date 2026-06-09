@@ -6,20 +6,14 @@ const { createClient } = require('@supabase/supabase-js');
 const OpenAI = require('openai');
 
 const app = express();
-const PORT = process.env.PORT || 3005;
 
-// Middleware de CORS agresivo
-app.use((req, res, next) => {
-  res.header("Access-Control-Allow-Origin", "*"); 
-  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-  next();
-});
+// Middleware
+app.use(cors());
+app.use(express.json());
+app.use(helmet());
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok', message: 'Neto Backend API operational' }));
 app.get('/', (req, res) => res.json({ message: 'Bienvenido a la API de Neto' }));
@@ -71,7 +65,9 @@ app.post('/api/ia/consultor', async (req, res) => {
     if (!userId) throw new Error("Usuario no autenticado");
 
     // 1. Verificar límites diarios
-    const { data: profile } = await supabase.from('profiles').select('pro_plan, daily_ai_requests, last_ai_request_date').eq('id', userId).single();
+    const { data: profile, error: profileError } = await supabase.from('profiles').select('pro_plan, daily_ai_requests, last_ai_request_date').eq('id', userId).single();
+    if(profileError) throw profileError;
+
     const today = new Date().toISOString().split('T')[0];
     let count = profile.last_ai_request_date === today ? (profile.daily_ai_requests || 0) : 0;
     
@@ -120,4 +116,4 @@ app.post('/api/ia/consultor', async (req, res) => {
 
 app.use((req, res) => res.status(404).json({ error: 'Endpoint no encontrado' }));
 
-app.listen(PORT, () => console.log(`Backend API running on http://localhost:${PORT}`));
+module.exports = app;

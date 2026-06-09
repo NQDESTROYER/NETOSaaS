@@ -7,8 +7,21 @@ const OpenAI = require('openai');
 
 const app = express();
 
+// Configuración CORS más específica
+const corsOptions = {
+  origin: [
+    'https://neto-saa-s.vercel.app', // URL principal del frontend
+    /https:\/\/neto-saa-.*-tomasychristian-projects\.vercel\.app/ // Patrón para despliegues de preview
+  ],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Origin', 'X-Requested-With', 'Content-Type', 'Accept', 'Authorization'],
+  credentials: true,
+  optionsSuccessStatus: 200
+};
+
 // Middleware
-app.use(cors());
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions)); // Manejar explícitamente preflight OPTIONS
 app.use(express.json());
 app.use(helmet());
 

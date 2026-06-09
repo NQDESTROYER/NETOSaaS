@@ -98,7 +98,7 @@ export default function NewProductModal({ isOpen, onClose, onProductAdded }: { i
         </select>
 
         <input placeholder="Nombre del producto" value={name} className="w-full bg-[#1a1a1a] border border-[#222222] p-2 rounded text-white focus:border-[#c8ff00] outline-none transition-colors" onChange={e => setName(e.target.value)} required />
-        <input type="number" placeholder="Stock disponible" value={stock} className="w-full bg-[#1a1a1a] border border-[#222222] p-2 rounded text-white focus:border-[#c8ff00] outline-none transition-colors" onChange={e => setStock(Number(e.target.value))} required />
+        <input type="number" placeholder="Stock disponible" value={stock} className="w-full bg-[#1a1a1a] border border-[#222222] p-2 rounded text-white focus:border-[#c8ff00] outline-none transition-colors" onChange={e => setStock(e.target.value)} required />
         <input type="number" placeholder="Costo de compra esperado" value={costPrice} className="w-full bg-[#1a1a1a] border border-[#222222] p-2 rounded text-white focus:border-[#c8ff00] outline-none transition-colors" onChange={e => setCostPrice(e.target.value)} required />
         <input type="number" placeholder="Precio de venta proyectado" value={salePrice} className="w-full bg-[#1a1a1a] border border-[#222222] p-2 rounded text-white focus:border-[#c8ff00] outline-none transition-colors" onChange={e => setSalePrice(e.target.value)} required />
         <input type="file" accept="image/*" className="w-full text-[#888] text-[12px] file:text-[12px] file:bg-[#1a1a1a] file:text-white file:border-none file:rounded file:px-2" onChange={e => e.target.files && setFile(e.target.files[0])} />

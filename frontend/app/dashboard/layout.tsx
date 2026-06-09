@@ -14,8 +14,22 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     async function checkOnboarding() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { router.push('/login'); return; }
-      const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
-      if (!profile?.onboarding_completed) { router.push('/onboarding'); return; }
+      
+      const { data: profile, error } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle();
+      
+      if (error) {
+        console.error('Error fetching profile:', error);
+        // If there's an error (like 406), consider treating it as not completed to be safe, 
+        // or redirect to a profile completion page if appropriate.
+        router.push('/onboarding');
+        return;
+      }
+
+      if (!profile || !profile.onboarding_completed) {
+        router.push('/onboarding');
+        return;
+      }
+      
       setProfile(profile);
       setLoading(false);
     }

@@ -16,7 +16,8 @@ app.use(cors({
   origin: [
     'http://localhost:5078', 
     'https://neto-saa-ah38ro72l-tomasychristian-projects.vercel.app',
-    'https://neto-saa-kl25mfpo5-tomasychristian-projects.vercel.app'
+    'https://neto-saa-kl25mfpo5-tomasychristian-projects.vercel.app',
+    'https://neto-saa-s.vercel.app'
   ], 
   methods: ['GET', 'POST', 'PUT', 'DELETE'], 
   credentials: true 

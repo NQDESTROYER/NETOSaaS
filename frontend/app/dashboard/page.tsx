@@ -19,6 +19,7 @@ export default function DashboardPage() {
   const [visiblePasswords, setVisiblePasswords] = useState<Record<string, boolean>>({});
   const [chartType, setChartType] = useState('bar');
   const [timeframe, setTimeframe] = useState<'dia' | 'semana' | 'mes'>('semana');
+  const [newBranch, setNewBranch] = useState({ name: '', address: '', manager_name: '', phone: '', branch_username: '', branch_password: '' });
 
   useEffect(() => {
     async function loadData() {

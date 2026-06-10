@@ -42,6 +42,11 @@ app.get('/', (req, res) => res.json({ message: 'Bienvenido a la API de Neto' }))
 
 app.post('/api/sales', async (req, res) => {
   const { cart, channel, userId, customerName, customerPhone } = req.body;
+  
+  // Lista blanca de canales permitidos según la base de datos
+  const allowedChannels = ['instagram', 'whatsapp', 'presencial', 'ia_whatsapp'];
+  const validChannel = allowedChannels.includes(channel) ? channel : 'presencial';
+
   try {
     const totalAmount = cart.reduce((acc, item) => acc + item.sale_price * item.quantity, 0);
     const totalCost = cart.reduce((acc, item) => acc + item.cost_price * item.quantity, 0);
@@ -50,7 +55,7 @@ app.post('/api/sales', async (req, res) => {
     const { data: sale, error: saleError } = await supabase
       .from('sales')
       .insert({ 
-        channel, 
+        channel: validChannel, 
         total_amount: totalAmount, 
         total_cost: totalCost, 
         net_profit: netProfit, 

@@ -1,136 +1,210 @@
-'use client'
-import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabaseClient'
-import { motion } from 'framer-motion'
-import { Eye, EyeOff, Trash2, CheckCircle, XCircle, PlusCircle, Save } from 'lucide-react'
-import { useRouter } from 'next/navigation'
-import { useBranch } from '@/hooks/useBranch'
+'use client';
+
+import { useState, useMemo } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Eye, EyeOff, Trash2, Edit2, Copy, Plus, BarChart3, Store } from 'lucide-react';
+import { toast } from 'sonner';
+import { BarChart, Bar, LineChart, Line, ComposedChart, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ErrorBar } from 'recharts';
+
+// Datos OHLC mejorados
+const rawData = {
+  dia: [
+    { name: 'Lun', open: 300, close: 400, high: 450, low: 250 },
+    { name: 'Mar', open: 400, close: 300, high: 420, low: 280 },
+    { name: 'Mié', open: 300, close: 600, high: 650, low: 290 },
+    { name: 'Jue', open: 600, close: 800, high: 850, low: 580 },
+    { name: 'Vie', open: 800, close: 1200, high: 1250, low: 780 },
+    { name: 'Sáb', open: 1200, close: 900, high: 1220, low: 880 },
+    { name: 'Dom', open: 900, close: 500, high: 950, low: 480 },
+  ],
+  semana: Array.from({ length: 4 }, (_, i) => ({
+    name: `Sem ${i + 1}`,
+    open: 1000 + i * 500,
+    close: 1500 + i * 600,
+    high: 2000 + i * 700,
+    low: 800 + i * 400,
+  })),
+  mes: [
+    { name: 'Ene', open: 5000, close: 7000, high: 7500, low: 4800 },
+    { name: 'Feb', open: 7000, close: 6500, high: 7200, low: 6000 },
+    { name: 'Mar', open: 6500, close: 9000, high: 9500, low: 6200 },
+    { name: 'Abr', open: 9000, close: 8500, high: 9200, low: 8000 },
+    { name: 'May', open: 8500, close: 10000, high: 10500, low: 8200 },
+    { name: 'Jun', open: 10000, close: 11000, high: 11500, low: 9500 },
+    { name: 'Jul', open: 11000, close: 10500, high: 11200, low: 10000 },
+    { name: 'Ago', open: 10500, close: 12000, high: 12500, low: 10200 },
+    { name: 'Sep', open: 12000, close: 11500, high: 12200, low: 11000 },
+    { name: 'Oct', open: 11500, close: 13000, high: 13500, low: 11200 },
+    { name: 'Nov', open: 13000, close: 12500, high: 13200, low: 12000 },
+    { name: 'Dic', open: 12500, close: 15000, high: 16000, low: 12200 },
+  ]
+};
+
+const mockBranches = [
+  { id: '1', name: 'Sucursal Centro', address: 'Av. Principal 123', manager: 'Juan Pérez', user: 'admin_centro', pass: 'secret123' },
+  { id: '2', name: 'Sucursal Norte', address: 'Calle Falsa 456', manager: 'María López', user: 'admin_norte', pass: 'norte456' },
+];
 
 export default function DashboardPage() {
-    const [data, setData] = useState<any>(null)
-    const [loading, setLoading] = useState(true)
-    const [isCreating, setIsCreating] = useState(false)
-    const [branchForm, setBranchForm] = useState({ name: '', address: '', manager_name: '', phone: '', username: '', password: '' })
-    const [visiblePasswords, setVisiblePasswords] = useState<Record<string, boolean>>({})
-    const [userRole, setUserRole] = useState('admin') 
-    const router = useRouter()
-    const { branches, activeBranch, setActiveBranch } = useBranch()
+  const [branches, setBranches] = useState(mockBranches);
+  const [visiblePasswords, setVisiblePasswords] = useState<Record<string, boolean>>({});
+  const [chartType, setChartType] = useState('bar');
+  const [timeframe, setTimeframe] = useState<'dia' | 'semana' | 'mes'>('semana');
 
-    useEffect(() => {
-        const role = localStorage.getItem('userRole') || 'admin'
-        setUserRole(role)
-        async function fetchData() {
-            setLoading(true)
-            const { data: { user } } = await supabase.auth.getUser()
-            if (!user) return
-            const [sales, products, profile] = await Promise.all([
-                supabase.from('sales').select('*').order('created_at', { ascending: true }),
-                supabase.from('products').select('*'),
-                supabase.from('profiles').select('*').eq('id', user.id).single()
-            ])
-            setData({ sales: sales.data, products: products.data, profile: profile.data })
-            setLoading(false)
-        }
-        fetchData()
-    }, [])
+  const chartData = useMemo(() => rawData[timeframe], [timeframe]);
 
-    const toggleBranchStatus = async (id: string, currentStatus: boolean) => {
-        await supabase.from('branches').update({ is_active: !currentStatus }).eq('id', id)
-        window.location.reload()
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [newBranch, setNewBranch] = useState({ name: '', address: '', manager_name: '', phone: '', branch_username: '', branch_password: '' });
+
+  const handleCreateBranch = async () => {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/branches`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newBranch),
+      });
+      if (!response.ok) throw new Error('Error al crear sucursal');
+      
+      toast.success('Sucursal creada exitosamente');
+      setBranches([...branches, { ...newBranch, id: Date.now().toString(), manager: newBranch.manager_name, user: newBranch.branch_username, pass: newBranch.branch_password }]);
+      setIsDialogOpen(false);
+      setNewBranch({ name: '', address: '', manager_name: '', phone: '', branch_username: '', branch_password: '' });
+    } catch (error) {
+      toast.error('Error al crear sucursal');
     }
+  };
 
-    const createBranch = async () => {
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user || !branchForm.name) return
-        
-        const { error } = await supabase.rpc('create_branch_with_credentials', {
-            p_profile_id: user.id,
-            p_name: branchForm.name,
-            p_address: branchForm.address,
-            p_manager_name: branchForm.manager_name,
-            p_phone: branchForm.phone,
-            p_username: branchForm.username,
-            p_password_hash: branchForm.password
-        })
-        
-        if (error) alert("Error al crear sucursal")
-        else {
-            setIsCreating(false)
-            setBranchForm({ name: '', address: '', manager_name: '', phone: '', username: '', password: '' })
-            window.location.reload()
-        }
-    }
+  const togglePasswordVisibility = (id: string) => {
+    setVisiblePasswords((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
 
-    const deleteBranch = async (id: string) => {
-        if (!confirm("¿Estás seguro de eliminar esta sucursal?")) return
-        await supabase.from('branches').delete().eq('id', id)
-        window.location.reload()
-    }
+  const handleCopyLink = () => {
+    const link = `${window.location.origin}/auth/sucursal-login`;
+    navigator.clipboard.writeText(link);
+    toast.success('Enlace copiado');
+  };
 
-    if (loading) return <div className="p-8 text-white">Cargando...</div>
+  return (
+    <div className="p-8 space-y-8">
+      <h1 className="text-3xl font-bold">Panel de Administración</h1>
 
-    return (
-        <div className="p-8 space-y-6 text-white max-w-7xl mx-auto">
-            {/* Sección de IA restringida */}
-            <div className="bg-[#141414] border border-[#222] rounded-xl p-5">
-                 <p className="text-gray-500 text-xs">Consultas IA</p>
-                 <div className="text-2xl font-bold">{userRole === 'admin' ? 'Infinitas' : '1/1 Consultas'}</div>
-            </div>
+      <Tabs defaultValue="analiticas" className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="analiticas"><BarChart3 className="mr-2 h-4 w-4" /> Analíticas</TabsTrigger>
+          <TabsTrigger value="sucursales"><Store className="mr-2 h-4 w-4" /> Gestión de Sucursales</TabsTrigger>
+        </TabsList>
 
-            {/* Sección Gestión: Solo Admin */}
-            {userRole === 'admin' && (
-                <motion.div initial={{opacity:0,y:20}} animate={{opacity:1,y:0}} transition={{delay:0.6}} className="bg-[#141414] border border-[#222] rounded-xl p-6">
-                    <div className="flex justify-between items-center mb-6">
-                        <h3 className="font-bold text-gray-300">Gestión de Sucursales</h3>
-                        <button onClick={() => setIsCreating(!isCreating)} className="bg-[#c8ff00] text-black font-bold px-4 py-2 rounded-lg text-sm flex items-center gap-2">
-                            <PlusCircle size={16} /> {isCreating ? 'Cancelar' : 'Nueva Sucursal'}
-                        </button>
-                    </div>
+        <TabsContent value="analiticas" className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <Card><CardHeader><CardTitle>Ingresos Totales</CardTitle></CardHeader><CardContent className="text-2xl font-bold">$45,000</CardContent></Card>
+            <Card><CardHeader><CardTitle>Total Ventas</CardTitle></CardHeader><CardContent className="text-2xl font-bold">1,200</CardContent></Card>
+            <Card><CardHeader><CardTitle>Sucursales</CardTitle></CardHeader><CardContent className="text-2xl font-bold">5</CardContent></Card>
+            <Card><CardHeader><CardTitle>Consultas IA</CardTitle></CardHeader><CardContent className="text-2xl font-bold">120 / 200</CardContent></Card>
+          </div>
 
-                    {isCreating && (
-                        <div className="grid grid-cols-2 gap-4 mb-6 p-4 bg-[#1a1a1a] rounded-lg border border-[#222]">
-                            <input placeholder="Nombre" className="p-2 bg-[#222] rounded border border-[#333]" onChange={e => setBranchForm({...branchForm, name: e.target.value})} />
-                            <input placeholder="Dirección" className="p-2 bg-[#222] rounded border border-[#333]" onChange={e => setBranchForm({...branchForm, address: e.target.value})} />
-                            <input placeholder="Encargado" className="p-2 bg-[#222] rounded border border-[#333]" onChange={e => setBranchForm({...branchForm, manager_name: e.target.value})} />
-                            <input placeholder="Teléfono" className="p-2 bg-[#222] rounded border border-[#333]" onChange={e => setBranchForm({...branchForm, phone: e.target.value})} />
-                            <input placeholder="Usuario" className="p-2 bg-[#222] rounded border border-[#333]" onChange={e => setBranchForm({...branchForm, username: e.target.value})} />
-                            <input type="password" placeholder="Contraseña" className="p-2 bg-[#222] rounded border border-[#333]" onChange={e => setBranchForm({...branchForm, password: e.target.value})} />
-                            <button onClick={createBranch} className="col-span-2 bg-[#c8ff00] text-black font-bold p-2 rounded flex items-center justify-center gap-2">
-                                <Save size={16} /> Guardar Sucursal
-                            </button>
+          <div className="flex gap-4">
+            <Select value={chartType} onValueChange={setChartType}>
+              <SelectTrigger className="w-[180px]"><SelectValue placeholder="Tipo de gráfico" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="bar">Barras</SelectItem>
+                <SelectItem value="line">Líneas</SelectItem>
+                <SelectItem value="candlestick">Velas Japonesas</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={timeframe} onValueChange={(v: 'dia' | 'semana' | 'mes') => setTimeframe(v)}>
+              <SelectTrigger className="w-[180px]"><SelectValue placeholder="Timeframe" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="dia">Por Día</SelectItem>
+                <SelectItem value="semana">Por Semana</SelectItem>
+                <SelectItem value="mes">Por Mes</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <Card className="h-96 p-4">
+            <ResponsiveContainer width="100%" height="100%">
+              {chartType === 'line' ? (
+                <LineChart data={chartData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" /><YAxis /><Tooltip /><Line type="monotone" dataKey="close" stroke="#8884d8" /></LineChart>
+              ) : chartType === 'candlestick' ? (
+                <ComposedChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" /><YAxis domain={['auto', 'auto']} /><Tooltip />
+                  <Bar dataKey="close" barSize={20} fill="#8884d8">
+                    {chartData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.close > entry.open ? '#22c55e' : '#ef4444'} />
+                    ))}
+                    <ErrorBar dataKey="high" width={4} strokeWidth={2} stroke="gray" direction="plus" />
+                    <ErrorBar dataKey="low" width={4} strokeWidth={2} stroke="gray" direction="minus" />
+                  </Bar>
+                </ComposedChart>
+              ) : (
+                <BarChart data={chartData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" /><YAxis /><Tooltip /><Bar dataKey="close" fill="#8884d8" /></BarChart>
+              )}
+            </ResponsiveContainer>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="sucursales">
+           <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>Listado de Sucursales</CardTitle>
+              <Dialog>
+                <DialogTrigger className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-9 px-4 py-2">
+                  <Plus className="mr-2 h-4 w-4" /> Añadir Sucursal
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader><DialogTitle>Nueva Sucursal</DialogTitle></DialogHeader>
+                  <div className="space-y-4 pt-4">
+                    <Input placeholder="Nombre" value={newBranch.name} onChange={e => setNewBranch({...newBranch, name: e.target.value})} />
+                    <Input placeholder="Dirección" value={newBranch.address} onChange={e => setNewBranch({...newBranch, address: e.target.value})} />
+                    <Input placeholder="Encargado" value={newBranch.manager_name} onChange={e => setNewBranch({...newBranch, manager_name: e.target.value})} />
+                    <Input placeholder="Teléfono" value={newBranch.phone} onChange={e => setNewBranch({...newBranch, phone: e.target.value})} />
+                    <Input placeholder="Usuario" value={newBranch.branch_username} onChange={e => setNewBranch({...newBranch, branch_username: e.target.value})} />
+                    <Input type="password" placeholder="Contraseña" value={newBranch.branch_password} onChange={e => setNewBranch({...newBranch, branch_password: e.target.value})} />
+                    <Button className="w-full" onClick={handleCreateBranch}>Guardar</Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nombre</TableHead><TableHead>Dirección</TableHead><TableHead>Encargado</TableHead>
+                    <TableHead>Usuario</TableHead><TableHead>Contraseña</TableHead><TableHead>Acciones</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {branches.map((b) => (
+                    <TableRow key={b.id}>
+                      <TableCell>{b.name}</TableCell><TableCell>{b.address}</TableCell><TableCell>{b.manager}</TableCell>
+                      <TableCell>{b.user}</TableCell>
+                      <TableCell className="flex items-center gap-2">
+                        {visiblePasswords[b.id] ? b.pass : '••••••••'}
+                        <Button variant="ghost" size="icon" onClick={() => togglePasswordVisibility(b.id)}>
+                          {visiblePasswords[b.id] ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </Button>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-1">
+                          <Button variant="ghost" size="icon" onClick={handleCopyLink}><Copy size={16} /></Button>
+                          <Button variant="ghost" size="icon"><Edit2 size={16} /></Button>
+                          <Button variant="ghost" size="icon" className="text-destructive"><Trash2 size={16} /></Button>
                         </div>
-                    )}
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        {branches.map((b: any) => (
-                            <div key={b.id} className={`p-4 rounded-lg border ${b.is_active ? 'border-[#222] bg-[#1a1a1a]' : 'border-red-900 bg-red-950/20'} relative`}>
-                                <div className="flex justify-between items-start">
-                                    <p className="font-bold">{b.name}</p>
-                                    <div className="flex gap-2">
-                                        <button onClick={() => toggleBranchStatus(b.id, b.is_active)}>
-                                            {b.is_active ? <CheckCircle size={16} className="text-green-500"/> : <XCircle size={16} className="text-red-500"/>}
-                                        </button>
-                                        <button onClick={() => deleteBranch(b.id)}>
-                                            <Trash2 size={16} className="text-red-400 hover:text-red-600"/>
-                                        </button>
-                                    </div>
-                                </div>
-                                <p className="text-xs text-gray-400">{b.address}</p>
-                                <p className="text-xs text-gray-500 mt-1">Encargado: {b.manager_name}</p>
-                                <div className="mt-4 text-[10px] bg-[#222] p-2 rounded break-all">
-                                    Link: {window.location.origin}/auth/sucursal/{b.id}
-                                </div>
-                                <div className="mt-2 flex items-center justify-between bg-[#222] p-2 rounded text-[10px]">
-                                    <span>User: {branchForm.username}</span>
-                                    <button onClick={() => setVisiblePasswords({...visiblePasswords, [b.id]: !visiblePasswords[b.id]})}>
-                                        {visiblePasswords[b.id] ? <EyeOff size={12}/> : <Eye size={12}/>}
-                                    </button>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </motion.div>
-            )}
-        </div>
-    )
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
 }

@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { supabase } from '@/lib/supabaseClient';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -12,69 +13,52 @@ import { Eye, EyeOff, Trash2, Edit2, Copy, Plus, BarChart3, Store } from 'lucide
 import { toast } from 'sonner';
 import { BarChart, Bar, LineChart, Line, ComposedChart, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ErrorBar } from 'recharts';
 
-// Datos OHLC mejorados
-const rawData = {
-  dia: [
-    { name: 'Lun', open: 300, close: 400, high: 450, low: 250 },
-    { name: 'Mar', open: 400, close: 300, high: 420, low: 280 },
-    { name: 'Mié', open: 300, close: 600, high: 650, low: 290 },
-    { name: 'Jue', open: 600, close: 800, high: 850, low: 580 },
-    { name: 'Vie', open: 800, close: 1200, high: 1250, low: 780 },
-    { name: 'Sáb', open: 1200, close: 900, high: 1220, low: 880 },
-    { name: 'Dom', open: 900, close: 500, high: 950, low: 480 },
-  ],
-  semana: Array.from({ length: 4 }, (_, i) => ({
-    name: `Sem ${i + 1}`,
-    open: 1000 + i * 500,
-    close: 1500 + i * 600,
-    high: 2000 + i * 700,
-    low: 800 + i * 400,
-  })),
-  mes: [
-    { name: 'Ene', open: 5000, close: 7000, high: 7500, low: 4800 },
-    { name: 'Feb', open: 7000, close: 6500, high: 7200, low: 6000 },
-    { name: 'Mar', open: 6500, close: 9000, high: 9500, low: 6200 },
-    { name: 'Abr', open: 9000, close: 8500, high: 9200, low: 8000 },
-    { name: 'May', open: 8500, close: 10000, high: 10500, low: 8200 },
-    { name: 'Jun', open: 10000, close: 11000, high: 11500, low: 9500 },
-    { name: 'Jul', open: 11000, close: 10500, high: 11200, low: 10000 },
-    { name: 'Ago', open: 10500, close: 12000, high: 12500, low: 10200 },
-    { name: 'Sep', open: 12000, close: 11500, high: 12200, low: 11000 },
-    { name: 'Oct', open: 11500, close: 13000, high: 13500, low: 11200 },
-    { name: 'Nov', open: 13000, close: 12500, high: 13200, low: 12000 },
-    { name: 'Dic', open: 12500, close: 15000, high: 16000, low: 12200 },
-  ]
-};
-
-const mockBranches = [
-  { id: '1', name: 'Sucursal Centro', address: 'Av. Principal 123', manager: 'Juan Pérez', user: 'admin_centro', pass: 'secret123' },
-  { id: '2', name: 'Sucursal Norte', address: 'Calle Falsa 456', manager: 'María López', user: 'admin_norte', pass: 'norte456' },
-];
-
 export default function DashboardPage() {
-  const [branches, setBranches] = useState(mockBranches);
+  const [branches, setBranches] = useState<any[]>([]);
+  const [stats, setStats] = useState({ totalIngresos: 0, totalVentas: 0, consultasIA: 0 });
   const [visiblePasswords, setVisiblePasswords] = useState<Record<string, boolean>>({});
   const [chartType, setChartType] = useState('bar');
   const [timeframe, setTimeframe] = useState<'dia' | 'semana' | 'mes'>('semana');
 
-  const chartData = useMemo(() => rawData[timeframe], [timeframe]);
+  useEffect(() => {
+    async function loadData() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
 
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [newBranch, setNewBranch] = useState({ name: '', address: '', manager_name: '', phone: '', branch_username: '', branch_password: '' });
+      // Cargar sucursales
+      const { data: branchesData } = await supabase
+        .from('branches')
+        .select('*')
+        .eq('profile_id', user.id);
+      if (branchesData) setBranches(branchesData);
+
+      // Cargar métricas (ejemplo simplificado)
+      const { data: salesData } = await supabase
+        .from('sales')
+        .select('total_amount')
+        .in('branch_id', branchesData?.map(b => b.id) || []);
+      
+      const totalIngresos = salesData?.reduce((acc, s) => acc + s.total_amount, 0) || 0;
+      setStats({ totalIngresos, totalVentas: salesData?.length || 0, consultasIA: 0 });
+    }
+    loadData();
+  }, []);
 
   const handleCreateBranch = async () => {
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('No autenticado');
+
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/branches`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newBranch),
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${user.id}` },
+        body: JSON.stringify({ ...newBranch, profile_id: user.id }),
       });
       if (!response.ok) throw new Error('Error al crear sucursal');
       
       toast.success('Sucursal creada exitosamente');
-      setBranches([...branches, { ...newBranch, id: Date.now().toString(), manager: newBranch.manager_name, user: newBranch.branch_username, pass: newBranch.branch_password }]);
-      setIsDialogOpen(false);
-      setNewBranch({ name: '', address: '', manager_name: '', phone: '', branch_username: '', branch_password: '' });
+      // Recargar sucursales
+      window.location.reload(); 
     } catch (error) {
       toast.error('Error al crear sucursal');
     }

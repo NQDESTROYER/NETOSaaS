@@ -4,6 +4,9 @@ const cors = require('cors');
 const helmet = require('helmet');
 const { createClient } = require('@supabase/supabase-js');
 const OpenAI = require('openai');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const verifyBranchToken = require('./middleware/verifyBranchToken');
 
 const app = express();
 
@@ -39,6 +42,28 @@ app.use((req, res, next) => {
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok', message: 'Neto Backend API operational' }));
 app.get('/', (req, res) => res.json({ message: 'Bienvenido a la API de Neto' }));
+
+app.post('/api/auth/branch-login', async (req, res) => {
+  const { username, password } = req.body;
+  
+  const { data: branch, error } = await supabase
+    .from('branches')
+    .select('*')
+    .eq('branch_username', username)
+    .single();
+
+  if (error || !branch || !(await bcrypt.compare(password, branch.branch_password))) {
+    return res.status(401).json({ error: "Credenciales incorrectas" });
+  }
+
+  const token = jwt.sign(
+    { branch_id: branch.id, profile_id: branch.profile_id, role: 'STAFF' },
+    process.env.JWT_SECRET,
+    { expiresIn: '8h' }
+  );
+
+  res.json({ token, branch: { id: branch.id, name: branch.name } });
+});
 
 // ... (código previo) ...
 

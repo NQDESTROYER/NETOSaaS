@@ -138,8 +138,8 @@ export default function DashboardPage() {
                     {chartData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.close > entry.open ? '#22c55e' : '#ef4444'} />
                     ))}
-                    <ErrorBar dataKey="high" width={4} strokeWidth={2} stroke="gray" direction="plus" />
-                    <ErrorBar dataKey="low" width={4} strokeWidth={2} stroke="gray" direction="minus" />
+                    <ErrorBar dataKey="high" width={4} strokeWidth={2} stroke="gray" direction="y" />
+                    <ErrorBar dataKey="low" width={4} strokeWidth={2} stroke="gray" direction="y" />
                   </Bar>
                 </ComposedChart>
               ) : (

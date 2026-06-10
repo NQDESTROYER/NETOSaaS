@@ -6,25 +6,11 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { useRouter } from 'next/navigation'
 import { useBranch } from '@/hooks/useBranch'
 
-const AnimatedNumber = ({ value, prefix='$', duration=800 }: { value: number, prefix?: string, duration?: number }) => {
-    const [display, setDisplay] = useState(0)
-    useEffect(() => {
-        const start = Date.now()
-        const tick = () => {
-            const elapsed = Date.now() - start
-            const progress = Math.min(elapsed / duration, 1)
-            const eased = 1 - Math.pow(1 - progress, 4)
-            setDisplay(Math.round(eased * value))
-            if (progress < 1) requestAnimationFrame(tick)
-        }
-        requestAnimationFrame(tick)
-    }, [value, duration])
-    return <span>{prefix}{display.toLocaleString('es-CL')}</span>
-}
-
 export default function DashboardPage() {
     const [data, setData] = useState<any>(null)
     const [loading, setLoading] = useState(true)
+    const [isCreating, setIsCreating] = useState(false)
+    const [branchForm, setBranchForm] = useState({ name: '', address: '', manager_name: '', phone: '' })
     const router = useRouter()
     const { branches, activeBranch, setActiveBranch } = useBranch()
 
@@ -44,51 +30,62 @@ export default function DashboardPage() {
         fetchData()
     }, [])
 
-    const computed = useMemo(() => {
-        if (!data) return null
-        const { sales, products, profile } = data
+    const createBranch = async () => {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
         
-        // Filtramos datos según la sucursal activa si no es "Todas" (puedes implementar lógica aquí)
-        const activeSales = activeBranch ? sales.filter((s:any) => s.branch_id === activeBranch) : sales
-
-        const now = new Date()
-        const currentMonth = now.getMonth()
+        const { data, error } = await supabase.rpc('create_branch', {
+            p_profile_id: user.id,
+            p_name: branchForm.name,
+            p_address: branchForm.address,
+            p_manager_name: branchForm.manager_name,
+            p_phone: branchForm.phone
+        })
         
-        const monthlySalesArr = Array.from({length: 12}, (_, i) => 
-            activeSales.filter((s:any) => new Date(s.created_at).getMonth() === i)
-                 .reduce((acc:number, s:any) => acc + Number(s.total_amount), 0)
-        )
-        const totalSalesMonth = monthlySalesArr[currentMonth]
-        const monthlyMeta = profile.monthly_revenue_goal || 1200000
-        
-        return { totalSalesMonth, monthlyMeta, monthlySalesArr }
-    }, [data, activeBranch])
+        if (error) alert("Error al crear sucursal")
+        else {
+            alert("Sucursal creada")
+            setIsCreating(false)
+            window.location.reload()
+        }
+    }
 
     if (loading) return <div className="p-8 text-white">Cargando...</div>
-    
-    // ... (rest of the component) ...
 
     return (
         <div className="p-8 space-y-6 text-white max-w-7xl mx-auto">
-            {/* ... (Header y Secciones Previas) ... */}
-            
-            {/* NUEVA SECCIÓN: GESTIÓN DE SUCURSALES */}
+            {/* ... (Header y métricas previas) ... */}
+
+            {/* SECCIÓN GESTIÓN DE SUCURSALES Y CREACIÓN */}
             <motion.div initial={{opacity:0,y:20}} animate={{opacity:1,y:0}} transition={{delay:0.6}} className="bg-[#141414] border border-[#222] rounded-xl p-6">
-                <h3 className="font-bold mb-4 text-gray-300">Gestión de Sucursales</h3>
+                <div className="flex justify-between items-center mb-6">
+                    <h3 className="font-bold text-gray-300">Gestión de Sucursales</h3>
+                    <button onClick={() => setIsCreating(!isCreating)} className="bg-[#c8ff00] text-black font-bold px-4 py-2 rounded-lg text-sm">
+                        {isCreating ? 'Cancelar' : '+ Nueva Sucursal'}
+                    </button>
+                </div>
+
+                {isCreating && (
+                    <div className="grid grid-cols-2 gap-4 mb-6 p-4 bg-[#1a1a1a] rounded-lg">
+                        <input placeholder="Nombre" className="p-2 bg-[#222] rounded" onChange={e => setBranchForm({...branchForm, name: e.target.value})} />
+                        <input placeholder="Dirección" className="p-2 bg-[#222] rounded" onChange={e => setBranchForm({...branchForm, address: e.target.value})} />
+                        <input placeholder="Encargado" className="p-2 bg-[#222] rounded" onChange={e => setBranchForm({...branchForm, manager_name: e.target.value})} />
+                        <input placeholder="Teléfono" className="p-2 bg-[#222] rounded" onChange={e => setBranchForm({...branchForm, phone: e.target.value})} />
+                        <button onClick={createBranch} className="col-span-2 bg-[#c8ff00] text-black font-bold p-2 rounded">Guardar Sucursal</button>
+                    </div>
+                )}
+
                 <div className="grid grid-cols-3 gap-4">
                     {branches.map((b: any) => (
-                        <button 
-                            key={b.id}
-                            onClick={() => setActiveBranch(b.id)}
-                            className={`p-4 rounded-lg border ${activeBranch === b.id ? 'border-[#c8ff00] bg-[#1a2a00]' : 'border-[#222] bg-[#1a1a1a]'}`}
-                        >
+                        <div key={b.id} className="p-4 rounded-lg border border-[#222] bg-[#1a1a1a]">
                             <p className="font-bold">{b.name}</p>
                             <p className="text-xs text-gray-400">{b.address}</p>
-                        </button>
+                            <p className="text-xs text-gray-500 mt-1">Encargado: {b.manager_name}</p>
+                            <div className="mt-4 text-[10px] bg-[#222] p-2 rounded break-all">
+                                Link de registro: {window.location.origin}/auth/sucursal/{b.id}
+                            </div>
+                        </div>
                     ))}
-                    <button className="p-4 rounded-lg border border-dashed border-[#444] text-gray-400 hover:border-[#c8ff00] hover:text-[#c8ff00]">
-                        + Nueva Sucursal
-                    </button>
                 </div>
             </motion.div>
         </div>

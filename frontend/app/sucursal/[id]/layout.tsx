@@ -19,7 +19,7 @@ export default function SucursalLayout({ children }: { children: React.ReactNode
     }
   }, [token, branch, params.id, router, logout]);
 
-  if (!token || branch?.id !== params.id) return null;
+  if (!token || !branch || branch.id !== params.id) return null;
 
   return (
     <div className="flex h-screen">

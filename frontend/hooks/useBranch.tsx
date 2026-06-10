@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabaseClient';
 const BranchContext = createContext<any>(null);
 
 export const BranchProvider = ({ children }: { children: React.ReactNode }) => {
-    const [branches, setBranches] = useState([]);
+    const [branches, setBranches] = useState<any[]>([]);
     const [activeBranch, setActiveBranch] = useState<string | null>(null);
 
     useEffect(() => {

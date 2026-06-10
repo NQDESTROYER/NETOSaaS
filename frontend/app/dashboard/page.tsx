@@ -109,7 +109,7 @@ export default function DashboardPage() {
           </div>
 
           <div className="flex gap-4">
-            <Select value={chartType} onValueChange={(value: string) => setChartType(value)}>
+            <Select value={chartType} onValueChange={(value) => value && setChartType(value)}>
               <SelectTrigger className="w-[180px]"><SelectValue placeholder="Tipo de gráfico" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="bar">Barras</SelectItem>
@@ -117,7 +117,7 @@ export default function DashboardPage() {
                 <SelectItem value="candlestick">Velas Japonesas</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={timeframe} onValueChange={(value: 'dia' | 'semana' | 'mes') => setTimeframe(value)}>
+            <Select value={timeframe} onValueChange={(value) => value && setTimeframe(value as 'dia' | 'semana' | 'mes')}>
               <SelectTrigger className="w-[180px]"><SelectValue placeholder="Timeframe" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="dia">Por Día</SelectItem>

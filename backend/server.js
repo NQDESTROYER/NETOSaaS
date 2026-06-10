@@ -40,10 +40,20 @@ app.use((req, res, next) => {
 app.get('/api/health', (req, res) => res.json({ status: 'ok', message: 'Neto Backend API operational' }));
 app.get('/', (req, res) => res.json({ message: 'Bienvenido a la API de Neto' }));
 
+// ... (código previo) ...
+
+// Middleware para extraer branch_id
+app.use((req, res, next) => {
+    req.branchId = req.headers['x-branch-id'];
+    next();
+});
+
 app.post('/api/sales', async (req, res) => {
   const { cart, channel, userId, customerName, customerPhone } = req.body;
+  const branchId = req.branchId;
   
-  // Lista blanca de canales permitidos según la base de datos
+  if (!branchId) return res.status(400).json({ error: "Sucursal no especificada" });
+
   const allowedChannels = ['instagram', 'whatsapp', 'presencial', 'ia_whatsapp'];
   const validChannel = allowedChannels.includes(channel) ? channel : 'presencial';
 
@@ -60,6 +70,7 @@ app.post('/api/sales', async (req, res) => {
         total_cost: totalCost, 
         net_profit: netProfit, 
         user_id: userId,
+        branch_id: branchId,
         customer_name: customerName || 'Cliente Anónimo',
         customer_phone: customerPhone || null
       })
@@ -76,7 +87,7 @@ app.post('/api/sales', async (req, res) => {
         quantity: item.quantity,
         unit_price: item.sale_price
       });
-      await supabase.from('products').update({ stock: item.stock - item.quantity }).eq('id', item.id);
+      await supabase.from('products').update({ stock: item.stock - item.quantity }).eq('id', item.id).eq('branch_id', branchId);
     }
     res.json({ success: true, saleId: sale.id });
   } catch (error) {
@@ -87,6 +98,9 @@ app.post('/api/sales', async (req, res) => {
 // Endpoint de IA optimizado con OpenAI
 app.post('/api/ia/consultor', async (req, res) => {
   const { question, userId } = req.body;
+  const branchId = req.branchId;
+  
+  if (!branchId) return res.status(400).json({ error: "Sucursal no especificada" });
 
   try {
     if (!userId) throw new Error("Usuario no autenticado");
@@ -104,14 +118,15 @@ app.post('/api/ia/consultor', async (req, res) => {
         return res.status(429).json({ error: "Límite diario alcanzado" });
     }
 
-    // 2. Obtener y minificar contexto (Ahorro de tokens)
-    const { data: products } = await supabase.from('products').select('name, stock, cost_price, sale_price').eq('user_id', userId);
-    const { data: sales } = await supabase.from('sales').select('total_amount, created_at').eq('user_id', userId).order('created_at', { ascending: false }).limit(5);
+    // 2. Obtener y minificar contexto (FILTRADO POR BRANCH_ID)
+    const { data: products } = await supabase.from('products').select('name, stock, cost_price, sale_price').eq('branch_id', branchId);
+    const { data: sales } = await supabase.from('sales').select('total_amount, created_at').eq('branch_id', branchId).order('created_at', { ascending: false }).limit(5);
     
     const compactProducts = products?.map(p => ({ n: p.name, s: p.stock, c: p.cost_price, p: p.sale_price })) || [];
     const compactSales = sales?.map(s => ({ d: s.created_at.split('T')[0], t: s.total_amount })) || [];
     
     const context = `INV:${JSON.stringify(compactProducts)}.VTAS:${JSON.stringify(compactSales)}`;
+// ... (resto del código) ...
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",

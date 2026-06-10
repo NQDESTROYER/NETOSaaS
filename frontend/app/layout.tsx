@@ -3,6 +3,7 @@ import { Geist, Geist_Mono, Figtree } from "next/font/google";
 import { Toaster } from 'sonner';
 import "./globals.css";
 import { cn } from "@/lib/utils";
+import { BranchProvider } from '@/hooks/useBranch';
 
 const figtree = Figtree({subsets:['latin'],variable:'--font-sans'});
 
@@ -32,7 +33,9 @@ export default function RootLayout({
       className={cn("h-full", "antialiased", geistSans.variable, geistMono.variable, "font-sans", figtree.variable)}
     >
       <body className="min-h-full flex flex-col">
-        {children}
+        <BranchProvider>
+          {children}
+        </BranchProvider>
         <Toaster />
       </body>
     </html>

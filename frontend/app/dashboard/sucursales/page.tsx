@@ -46,7 +46,7 @@ export default function SucursalesPage() {
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">Gestión de Sucursales</h1>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
+          <DialogTrigger>
             <Button><Plus className="mr-2 h-4 w-4" /> Añadir Sucursal</Button>
           </DialogTrigger>
           <DialogContent>

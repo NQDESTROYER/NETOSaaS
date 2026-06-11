@@ -19,6 +19,41 @@ export default function DashboardPage() {
   const [chartType, setChartType] = useState('line');
   const [timeframe, setTimeframe] = useState<'semana' | 'mes'>('semana');
   const [chartData, setChartData] = useState<any[]>([]);
+  const [newBranch, setNewBranch] = useState({ name: '', address: '', manager_name: '', phone: '', branch_username: '', branch_password: '' });
+
+  const handleCreateBranch = async () => {
+    try {
+      const { data: branch, error: branchError } = await supabase
+        .from('branches')
+        .insert({
+          name: newBranch.name,
+          address: newBranch.address,
+          manager_name: newBranch.manager_name,
+          phone: newBranch.phone,
+        })
+        .select()
+        .single();
+      
+      if (branchError) throw branchError;
+
+      const { error: credError } = await supabase
+        .from('branch_credentials')
+        .insert({
+          branch_id: branch.id,
+          username: newBranch.branch_username,
+          password_hash: newBranch.branch_password, 
+        });
+
+      if (credError) throw credError;
+      
+      toast.success('Sucursal creada exitosamente');
+      setNewBranch({ name: '', address: '', manager_name: '', phone: '', branch_username: '', branch_password: '' });
+      window.location.reload(); 
+    } catch (error) {
+      console.error(error);
+      toast.error('Error al crear sucursal');
+    }
+  };
 
   useEffect(() => {
     async function loadData() {
@@ -92,8 +127,8 @@ export default function DashboardPage() {
             </Select>
           </div>
 
-          <Card className="h-96 p-4 w-full">
-            <ResponsiveContainer width="100%" height="100%">
+          <Card className="min-h-[300px] w-full p-4">
+            <ResponsiveContainer width="100%" height={300}>
               {chartType === 'line' ? (
                 <LineChart data={chartData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" /><YAxis /><Tooltip /><Line type="monotone" dataKey="value" stroke="#8884d8" /></LineChart>
               ) : (
@@ -105,6 +140,26 @@ export default function DashboardPage() {
 
         <TabsContent value="sucursales">
            <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>Listado de Sucursales</CardTitle>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button><Plus className="mr-2 h-4 w-4" /> Añadir Sucursal</Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader><DialogTitle>Nueva Sucursal</DialogTitle></DialogHeader>
+                  <div className="space-y-4 pt-4">
+                    <Input placeholder="Nombre" value={newBranch.name} onChange={e => setNewBranch({...newBranch, name: e.target.value})} />
+                    <Input placeholder="Dirección" value={newBranch.address} onChange={e => setNewBranch({...newBranch, address: e.target.value})} />
+                    <Input placeholder="Encargado" value={newBranch.manager_name} onChange={e => setNewBranch({...newBranch, manager_name: e.target.value})} />
+                    <Input placeholder="Teléfono" value={newBranch.phone} onChange={e => setNewBranch({...newBranch, phone: e.target.value})} />
+                    <Input placeholder="Usuario" value={newBranch.branch_username} onChange={e => setNewBranch({...newBranch, branch_username: e.target.value})} />
+                    <Input type="password" placeholder="Contraseña" value={newBranch.branch_password} onChange={e => setNewBranch({...newBranch, branch_password: e.target.value})} />
+                    <Button className="w-full" onClick={handleCreateBranch}>Guardar</Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </CardHeader>
             <CardContent>
               <Table>
                 <TableHeader>
@@ -120,6 +175,7 @@ export default function DashboardPage() {
                       <TableCell>{b.branch_credentials?.[0]?.username || 'N/A'}</TableCell>
                       <TableCell>
                         <div className="flex gap-1">
+                          <Button variant="ghost" size="icon" onClick={handleCopyLink}><Copy size={16} /></Button>
                           <Button variant="ghost" size="icon" onClick={() => alert('Reset password feature placeholder')}><RefreshCw size={16} /></Button>
                           <Button variant="ghost" size="icon" className="text-destructive" onClick={() => handleDeleteBranch(b.id)}><Trash2 size={16} /></Button>
                         </div>

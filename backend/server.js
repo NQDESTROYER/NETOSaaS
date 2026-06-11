@@ -46,23 +46,24 @@ app.get('/', (req, res) => res.json({ message: 'Bienvenido a la API de Neto' }))
 app.post('/api/auth/branch-login', async (req, res) => {
   const { username, password } = req.body;
   
-  const { data: branch, error } = await supabase
-    .from('branches')
-    .select('*')
-    .eq('branch_username', username)
+  // Buscar credenciales por username
+  const { data: cred, error } = await supabase
+    .from('branch_credentials')
+    .select('*, branches(*)')
+    .eq('username', username)
     .single();
 
-  if (error || !branch || !(await bcrypt.compare(password, branch.branch_password))) {
+  if (error || !cred || !(await bcrypt.compare(password, cred.password_hash))) {
     return res.status(401).json({ error: "Credenciales incorrectas" });
   }
 
   const token = jwt.sign(
-    { branch_id: branch.id, profile_id: branch.profile_id, role: 'STAFF' },
+    { branch_id: cred.branch_id, role: 'STAFF' },
     process.env.JWT_SECRET,
     { expiresIn: '8h' }
   );
 
-  res.json({ token, branch: { id: branch.id, name: branch.name } });
+  res.json({ token, branch: { id: cred.branch_id, name: cred.branches.name } });
 });
 
 // ... (código previo) ...

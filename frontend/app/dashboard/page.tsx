@@ -99,6 +99,12 @@ export default function DashboardPage() {
     toast.success('Sucursal eliminada');
   };
 
+  const handleCopyLink = () => {
+    const link = `${window.location.origin}/auth/sucursal-login`;
+    navigator.clipboard.writeText(link);
+    toast.success('Enlace de acceso copiado');
+  };
+
   return (
     <div className="p-8 space-y-8">
       <h1 className="text-3xl font-bold">Panel de Administración</h1>

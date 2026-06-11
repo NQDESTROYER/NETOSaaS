@@ -83,7 +83,7 @@ export default function DashboardPage() {
           </div>
 
           <div className="flex gap-4">
-            <Select value={chartType} onValueChange={setChartType}>
+            <Select value={chartType} onValueChange={(value) => value && setChartType(value)}>
               <SelectTrigger className="w-[180px]"><SelectValue placeholder="Tipo de gráfico" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="bar">Barras</SelectItem>
